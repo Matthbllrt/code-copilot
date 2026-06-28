@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Cercle",
+    "slug": "cercle",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.matth.blrt.cercleapp",
+      "adaptiveIcon": {
+        "backgroundColor": "#0D0A1A"
+      }
+    },
+    "plugins": [
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "cercle-4cc09"
+      }
+    }
+  }
+}
