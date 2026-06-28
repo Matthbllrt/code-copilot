@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const WalletContext = createContext({
@@ -11,11 +11,19 @@ const WalletContext = createContext({
 });
 
 const STORAGE_KEY = 'cercle_wallet';
+const SPY_COST = 50;
 
 export function WalletProvider({ children }) {
   const [tokens, setTokens] = useState(0);
   const [spyModeOwned, setSpyModeOwned] = useState(false);
   const [loaded, setLoaded] = useState(false);
+
+  // Refs for synchronous access (state setters are async)
+  const tokensRef = useRef(0);
+  const spyRef = useRef(false);
+
+  useEffect(() => { tokensRef.current = tokens; }, [tokens]);
+  useEffect(() => { spyRef.current = spyModeOwned; }, [spyModeOwned]);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
@@ -23,8 +31,12 @@ export function WalletProvider({ children }) {
         if (raw) {
           try {
             const data = JSON.parse(raw);
-            setTokens(data.tokens ?? 0);
-            setSpyModeOwned(data.spyModeOwned ?? false);
+            const t = data.tokens ?? 0;
+            const spy = data.spyModeOwned ?? false;
+            tokensRef.current = t;
+            spyRef.current = spy;
+            setTokens(t);
+            setSpyModeOwned(spy);
           } catch {}
         }
       })
@@ -37,43 +49,39 @@ export function WalletProvider({ children }) {
   }, []);
 
   const addTokens = useCallback((amount) => {
-    setTokens((prev) => {
-      const next = prev + amount;
-      setSpyModeOwned((spy) => { persist(next, spy); return spy; });
-      return next;
-    });
+    const next = tokensRef.current + amount;
+    tokensRef.current = next;
+    setTokens(next);
+    persist(next, spyRef.current);
   }, [persist]);
 
   const spendTokens = useCallback((amount) => {
-    let success = false;
-    setTokens((prev) => {
-      if (prev < amount) return prev;
-      success = true;
-      const next = prev - amount;
-      setSpyModeOwned((spy) => { persist(next, spy); return spy; });
-      return next;
-    });
-    return success;
+    const current = tokensRef.current;
+    if (current < amount) return false;
+    const next = current - amount;
+    tokensRef.current = next;
+    setTokens(next);
+    persist(next, spyRef.current);
+    return true;
   }, [persist]);
 
   const buySpyMode = useCallback(() => {
-    const SPY_COST = 50;
-    if (spyModeOwned) return true;
-    let success = false;
-    setTokens((prev) => {
-      if (prev < SPY_COST) return prev;
-      success = true;
-      const next = prev - SPY_COST;
-      setSpyModeOwned(true);
-      persist(next, true);
-      return next;
-    });
-    return success;
-  }, [spyModeOwned, persist]);
+    if (spyRef.current) return true;
+    const current = tokensRef.current;
+    if (current < SPY_COST) return false;
+    const next = current - SPY_COST;
+    tokensRef.current = next;
+    spyRef.current = true;
+    setTokens(next);
+    setSpyModeOwned(true);
+    persist(next, true);
+    return true;
+  }, [persist]);
 
   const syncTokens = useCallback((amount) => {
+    tokensRef.current = amount;
     setTokens(amount);
-    setSpyModeOwned((spy) => { persist(amount, spy); return spy; });
+    persist(amount, spyRef.current);
   }, [persist]);
 
   if (!loaded) return null;

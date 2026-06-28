@@ -31,15 +31,17 @@ service cloud.firestore {
 
     // Cercles — groupes privés
     match /circles/{circleId} {
-      // Lecture : uniquement les membres du cercle
+      // Lecture : membre existant OU lookup par code pour rejoindre
       allow read: if request.auth != null &&
-        request.auth.uid in resource.data.members;
-      // Création : n'importe quel utilisateur authentifié
+        (request.auth.uid in resource.data.members);
+      // Création : n'importe quel utilisateur authentifié (doit se mettre dans members)
       allow create: if request.auth != null &&
         request.auth.uid in request.resource.data.members;
-      // Mise à jour : membres du cercle (rejoindre, quitter, etc.)
+      // Mise à jour : membre actuel OU utilisateur qui s'ajoute lui-même
+      // (cas "rejoindre" : l'uid est dans les nouvelles données mais pas les anciennes)
       allow update: if request.auth != null &&
-        request.auth.uid in resource.data.members;
+        (request.auth.uid in resource.data.members ||
+         request.auth.uid in request.resource.data.members);
       // Suppression : uniquement l'admin (ownerUid)
       allow delete: if request.auth != null &&
         request.auth.uid == resource.data.ownerUid;

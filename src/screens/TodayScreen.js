@@ -82,6 +82,7 @@ export default function TodayScreen() {
   const [dilemma, setDilemma] = useState(null);
   const [voted, setVoted] = useState(false);
   const [myChoice, setMyChoice] = useState(null);
+  const [firebaseError, setFirebaseError] = useState(false);
   const [friendsVotes, setFriendsVotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState(false);
@@ -98,8 +99,12 @@ export default function TodayScreen() {
         if (!mounted) return;
         setUser(u);
         await init(u.uid, mounted);
-      } catch {
-        if (mounted) setLoading(false);
+      } catch (e) {
+        console.warn('Firebase auth error:', e);
+        if (mounted) {
+          setFirebaseError(true);
+          setLoading(false);
+        }
       }
     })();
     return () => { mounted = false; };
@@ -263,6 +268,21 @@ export default function TodayScreen() {
       <View style={s.center}>
         <ActivityIndicator color={COLORS.ember} size="large" />
         <Text style={s.loadingText}>Chargement du dilemme...</Text>
+      </View>
+    );
+  }
+
+  if (firebaseError) {
+    return (
+      <View style={s.center}>
+        <Text style={{ fontSize: 40, marginBottom: 16 }}>🔧</Text>
+        <Text style={[s.loadingText, { color: COLORS.ember, fontSize: 16, textAlign: 'center', marginHorizontal: 32 }]}>
+          Firebase non configuré{'\n'}
+        </Text>
+        <Text style={[s.loadingText, { textAlign: 'center', marginHorizontal: 32, lineHeight: 20 }]}>
+          Ouvre <Text style={{ color: COLORS.ember }}>src/firebase.js</Text> et remplace les valeurs
+          {' '}par ta config Firebase (console.firebase.google.com → Projet cercle-4cc09).
+        </Text>
       </View>
     );
   }
